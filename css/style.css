@@ -35,6 +35,8 @@ body {
     position: absolute;
     top: 0;
     left: 0;
+    /* 确保背景图在浏览器缩放时保持一致行为 */
+    transform-origin: top left;
 }
 
 .counter {
@@ -62,6 +64,10 @@ body {
     position: absolute;
     width: auto; /* 让宽度自动调整，保持宽高比 */
     height: auto; /* 让高度自动调整，保持宽高比 */
+    /* 移除最大宽高限制，由JS控制缩放 */
+    max-width: none;
+    max-height: none;
+    /* 只设置基本的translate，缩放由JS控制 */
     transform: translate(-50%, -50%);
     transition: opacity 0.3s ease;
     opacity: 0;
@@ -69,11 +75,15 @@ body {
     cursor: pointer; /* 鼠标悬停时显示指针 */
     user-select: none; /* 防止选中图片 */
     -webkit-user-drag: none; /* 防止拖拽图片 */
+    /* 确保猫咪图片在浏览器缩放时保持一致行为 */
+    transform-origin: center;
+    /* 禁用will-change，避免浏览器优化transform为matrix */
+    /* will-change: transform; */
 }
 
 .cat.found {
     opacity: 1;
-    animation: popIn 0.5s ease-out;
+    animation: popIn 0.5s ease-out forwards;
 }
 
 .cat-name {
@@ -99,7 +109,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: transparent;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -118,7 +128,7 @@ body {
 .win-content {
     text-align: center;
     color: white;
-    background-color: rgba(50, 50, 50, 0.8);
+    background-color: rgba(50, 50, 50, 0.6);
     padding: 30px;
     border-radius: 15px;
     z-index: 101;
@@ -184,6 +194,12 @@ body {
     cursor: move;
     border: 2px dashed red;
     background-color: rgba(255, 0, 0, 0.2);
+    /* 移除固定的transform，允许updateCatPosition函数设置缩放 */
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    /* 注意：transform将由JS动态设置，以保持与游戏模式一致 */
 }
 
 #coordinates-display {
@@ -203,13 +219,12 @@ body {
 /* 动画效果 */
 @keyframes popIn {
     0% {
-        transform: translate(-50%, -50%) scale(0);
-    }
-    70% {
-        transform: translate(-50%, -50%) scale(1.2);
+        transform: translate(-50%, -50%);
+        opacity: 0;
     }
     100% {
-        transform: translate(-50%, -50%) scale(1);
+        transform: translate(-50%, -50%);
+        opacity: 1;
     }
 }
 
@@ -255,9 +270,12 @@ body {
         padding: 8px 12px;
     }
     
+    /* 确保猫咪图片使用JS设置的缩放比例 */
     .cat {
-        width: 40px;
-        height: 40px;
+        width: auto;
+        height: auto;
+        max-width: none;
+        max-height: none;
     }
     
     .win-content h2 {
