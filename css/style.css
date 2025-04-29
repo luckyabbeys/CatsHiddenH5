@@ -120,6 +120,7 @@ body {
 .win-message.show {
     opacity: 1;
     pointer-events: auto;
+    background-color: transparent;
 }
 
 .win-content {

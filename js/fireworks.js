@@ -123,8 +123,11 @@ class FireworksDisplay {
         if (!this.isRunning) return;
 
         this.animationId = requestAnimationFrame(() => this.animate());
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        // 清除画布但不添加黑色背景
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // 不再使用任何背景填充，保持完全透明
+        // this.ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+        // this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // 更新和绘制烟花
         this.fireworks = this.fireworks.filter(firework => {
