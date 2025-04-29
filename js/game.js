@@ -379,6 +379,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // 停止背景音乐
         backgroundMusic.pause();
         
+        // 播放胜利音乐
+        const winMusic = new Audio('sounds/catwin.mp3');
+        winMusic.volume = 0.8;
+        winMusic.play();
+        
         // 计算游戏时间
         const gameTime = Math.floor((Date.now() - gameStartTime) / 1000);
         const formattedTime = formatTime(gameTime);

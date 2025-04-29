@@ -103,11 +103,15 @@ class FireworksDisplay {
     start() {
         this.isRunning = true;
         this.animate();
+        // 增加烟花数量上限至25-50个（原来是5个），减少生成间隔至200ms（原来是800ms）
         this.createFireworksInterval = setInterval(() => {
-            if (this.fireworks.length < 5) {
-                this.fireworks.push(new Firework(this.canvas.width, this.canvas.height));
+            if (this.fireworks.length < 30) {
+                // 一次性添加多个烟花，增加密度
+                for (let i = 0; i < 3; i++) {
+                    this.fireworks.push(new Firework(this.canvas.width, this.canvas.height));
+                }
             }
-        }, 800);
+        }, 200);
     }
 
     stop() {
