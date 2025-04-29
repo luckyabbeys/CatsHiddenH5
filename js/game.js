@@ -27,6 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let gameTimer = null;
     let isGameActive = false; // 游戏是否激活状态
     
+    // 创建缩放警告元素
+    const zoomWarning = document.createElement('div');
+    zoomWarning.className = 'zoom-warning';
+    zoomWarning.innerHTML = '<div class="zoom-warning-content"><h2>浏览器缩放警告</h2><p>请将浏览器缩放设置为100%以获得最佳游戏体验。</p><p>当前缩放比例: <span id="current-zoom">100%</span></p></div>';
+    document.body.appendChild(zoomWarning);
+    const currentZoomSpan = document.getElementById('current-zoom')
+    
     // 音效
     const meowSound = new Audio('./sounds/meow.mp3');
     
@@ -64,19 +71,57 @@ document.addEventListener('DOMContentLoaded', () => {
         gameTimer = setInterval(updateGameTime, 1000);
     }
     
+    // 检查浏览器缩放比例
+    function checkBrowserZoom() {
+        const browserZoom = Math.round(window.devicePixelRatio * 100);
+        currentZoomSpan.textContent = browserZoom + '%';
+        
+        // 如果缩放比例不是100%，显示警告并禁用游戏
+        if (browserZoom !== 100) {
+            zoomWarning.classList.add('show');
+            disableGame();
+            return false;
+        } else {
+            zoomWarning.classList.remove('show');
+            enableGame();
+            return true;
+        }
+    }
+    
+    // 禁用游戏
+    function disableGame() {
+        if (isGameActive) {
+            isGameActive = false;
+        }
+        catsContainer.style.pointerEvents = 'none';
+        startGameButton.disabled = true;
+        startGameButton.textContent = '请调整浏览器缩放至100%';
+    }
+    
+    // 启用游戏
+    function enableGame() {
+        catsContainer.style.pointerEvents = 'auto';
+        startGameButton.disabled = false;
+        startGameButton.textContent = '开始游戏';
+    }
+    
     // 添加窗口大小变化的事件监听器
     window.addEventListener('resize', function() {
-        // 当窗口大小或浏览器缩放比例变化时，更新所有猫咪位置
-        console.log('窗口大小或缩放比例变化，更新猫咪位置');
-        // 延迟执行，确保浏览器完成缩放
-        setTimeout(updateAllCatsPositions, 100);
+        // 检查浏览器缩放比例
+        if (checkBrowserZoom()) {
+            // 只有在缩放比例为100%时才更新猫咪位置
+            console.log('窗口大小变化，更新猫咪位置');
+            setTimeout(updateAllCatsPositions, 100);
+        }
     });
     
     // 添加浏览器缩放检测（某些浏览器支持）
     window.addEventListener('zoom', function() {
-        console.log('浏览器缩放比例变化，更新猫咪位置');
-        setTimeout(updateAllCatsPositions, 100);
+        checkBrowserZoom();
     });
+    
+    // 初始检查浏览器缩放比例
+    checkBrowserZoom();
     
     // 创建猫咪元素
     function createCats() {
@@ -135,63 +180,38 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // 获取当前浏览器缩放比例
-        const browserZoom = window.devicePixelRatio || 1;
-        
         // 获取背景图的位置和尺寸
         backgroundRect = background.getBoundingClientRect();
         
-        // 计算背景图的实际缩放比例
-        // 由于背景图使用了object-fit: contain，需要计算实际的缩放比例
+        // 获取背景图的原始尺寸（这将作为我们的绝对坐标系）
         const backgroundNaturalWidth = background.naturalWidth;
         const backgroundNaturalHeight = background.naturalHeight;
-        const containerWidth = backgroundRect.width;
-        const containerHeight = backgroundRect.height;
         
-        // 计算背景图的实际缩放比例
-        let scaleRatio;
-        if (backgroundNaturalWidth / backgroundNaturalHeight > containerWidth / containerHeight) {
-            // 宽度适配，高度居中
-            scaleRatio = containerWidth / backgroundNaturalWidth;
-        } else {
-            // 高度适配，宽度居中
-            scaleRatio = containerHeight / backgroundNaturalHeight;
-        }
-        
-        // 保存全局缩放比例，以便其他函数使用
-        scale = scaleRatio;
-        window.scale = scaleRatio; // 同时更新全局变量，确保cats-data.js中的函数可以访问
-        
-        // 计算背景图的实际显示尺寸
-        const scaledWidth = backgroundNaturalWidth * scaleRatio;
-        const scaledHeight = backgroundNaturalHeight * scaleRatio;
-        
-        // 计算背景图的实际显示位置（考虑居中）
-        const offsetX = (containerWidth - scaledWidth) / 2;
-        const offsetY = (containerHeight - scaledHeight) / 2;
+        // 不再缩放背景图，使用原始像素大小
+        // 设置全局缩放比例为1，表示不缩放
+        scale = 1;
+        window.scale = 1; // 同时更新全局变量，确保cats-data.js中的函数可以访问
         
         // 在调试模式下，保持猫咪的原始位置不变
         // 在非调试模式下，限制猫咪坐标在背景图范围内
         if (!isDebugMode) {
-            // 限制猫咪坐标在0到1之间，确保不会超出背景图
+            // 限制猫咪坐标在背景图范围内，留出一点边距(2%)
             cat.x = Math.max(0.02, Math.min(cat.x, 0.98));
             cat.y = Math.max(0.02, Math.min(cat.y, 0.98));
         } else {
-            // 在调试模式下，输出当前应用的位置信息
-            console.log(`调试模式 - 应用猫咪 ${cat.id}(${cat.name}) 位置: (${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`);
+            // 在调试模式下，输出当前应用的位置信息（使用绝对像素坐标）
+            const absoluteX = Math.round(cat.x * backgroundNaturalWidth);
+            const absoluteY = Math.round(cat.y * backgroundNaturalHeight);
+            console.log(`调试模式 - 应用猫咪 ${cat.id}(${cat.name}) 位置: 绝对坐标(${absoluteX}px, ${absoluteY}px), 相对坐标(${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`);
         }
         
-        // 计算猫咪在背景图上的实际位置 - 使用相对于背景图的百分比位置
-        // 这样即使在浏览器缩放时，猫咪也会保持相对于背景图的正确位置
-        // 修正计算方式，确保在不同缩放比例下位置一致
-        // 考虑背景图的实际显示区域和偏移量
-        const relativeX = offsetX + (cat.x * scaledWidth);
-        const relativeY = offsetY + (cat.y * scaledHeight);
+        // 计算猫咪在背景图上的绝对位置
+        const absoluteX = Math.round(cat.x * backgroundNaturalWidth);
+        const absoluteY = Math.round(cat.y * backgroundNaturalHeight);
         
-        // 设置猫咪位置 - 使用相对于视口的位置，而不是相对于文档的位置
-        // 这样可以避免浏览器缩放导致的位置偏移
-        catElement.style.left = `${relativeX}px`;
-        catElement.style.top = `${relativeY}px`;
+        // 设置猫咪位置 - 使用绝对像素坐标
+        catElement.style.left = `${absoluteX}px`;
+        catElement.style.top = `${absoluteY}px`;
         
         // 强制移除任何可能的内联样式限制
         catElement.style.maxWidth = 'none';
@@ -199,12 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
         catElement.style.width = 'auto';
         catElement.style.height = 'auto';
         
-        // 使用与背景图相同的缩放比例来缩放猫咪图片
-        // 同时使用translate进行居中定位
-        // 使用scale函数而不是matrix，确保在游戏模式和调试模式下一致
-        // 将缩放系数保留4位小数，避免精度问题
-        const fixedScaleRatio = parseFloat(scaleRatio.toFixed(4));
-        catElement.style.transform = `translate(-50%, -50%) scale(${fixedScaleRatio})`;
+        // 不再对猫咪图片进行缩放，使用原始大小
+        catElement.style.transform = 'translate(-50%, -50%)';
         
         // 强制应用transform，确保浏览器不会优化为matrix
         void catElement.offsetWidth;
@@ -216,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 输出调试信息
         if (isDebugMode) {
-            console.log(`猫咪 ${cat.id} 位置更新: 相对位置(${cat.x.toFixed(4)}, ${cat.y.toFixed(4)}), 实际位置(${relativeX.toFixed(0)}, ${relativeY.toFixed(0)}), 缩放比例: ${fixedScaleRatio}, 浏览器缩放: ${browserZoom}`);
+            console.log(`猫咪 ${cat.id} 位置更新: 绝对坐标(${absoluteX}px, ${absoluteY}px), 背景图尺寸: ${backgroundNaturalWidth}x${backgroundNaturalHeight}`);
         }
     }
     
@@ -234,25 +250,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // 获取背景图的位置和尺寸
         backgroundRect = background.getBoundingClientRect();
         
-        // 计算背景图的实际缩放比例
+        // 获取背景图的原始尺寸（这将作为我们的绝对坐标系）
         const backgroundNaturalWidth = background.naturalWidth;
         const backgroundNaturalHeight = background.naturalHeight;
-        const containerWidth = backgroundRect.width;
-        const containerHeight = backgroundRect.height;
         
-        // 计算背景图的实际缩放比例
-        let scaleRatio;
-        if (backgroundNaturalWidth / backgroundNaturalHeight > containerWidth / containerHeight) {
-            // 宽度适配，高度居中
-            scaleRatio = containerWidth / backgroundNaturalWidth;
-        } else {
-            // 高度适配，宽度居中
-            scaleRatio = containerHeight / backgroundNaturalHeight;
-        }
-        
-        // 保存全局缩放比例，以便其他函数使用
-        scale = scaleRatio;
-        window.scale = scaleRatio; // 同时更新全局变量，确保cats-data.js中的函数可以访问
+        // 不再缩放背景图，使用原始像素大小
+        // 设置全局缩放比例为1，表示不缩放
+        scale = 1;
+        window.scale = 1; // 同时更新全局变量，确保cats-data.js中的函数可以访问
         
         // 更新所有猫咪位置
         const cats = document.querySelectorAll('.cat');
@@ -271,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // 输出当前缩放比例，帮助调试
-        console.log(`更新猫咪位置 - 缩放比例: ${scaleRatio}, 游戏模式: ${isGameActive ? '游戏' : '非游戏'}, 调试模式: ${isDebugMode ? '是' : '否'}`);
+        console.log(`更新猫咪位置 - 背景图尺寸: ${backgroundNaturalWidth}x${backgroundNaturalHeight}, 游戏模式: ${isGameActive ? '游戏' : '非游戏'}, 调试模式: ${isDebugMode ? '是' : '否'}`);
     }
     
     // 更新计数器
@@ -388,33 +393,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
         
-        // 获取背景图的实际缩放比例和尺寸
+        // 获取背景图的原始尺寸
         const backgroundNaturalWidth = background.naturalWidth;
         const backgroundNaturalHeight = background.naturalHeight;
-        const containerWidth = rect.width;
-        const containerHeight = rect.height;
         
-        // 计算背景图的实际缩放比例
-        let scaleRatio;
-        if (backgroundNaturalWidth / backgroundNaturalHeight > containerWidth / containerHeight) {
-            scaleRatio = containerWidth / backgroundNaturalWidth;
-        } else {
-            scaleRatio = containerHeight / backgroundNaturalHeight;
-        }
-        
-        // 计算背景图的实际显示尺寸
-        const scaledWidth = backgroundNaturalWidth * scaleRatio;
-        const scaledHeight = backgroundNaturalHeight * scaleRatio;
-        
-        // 计算背景图的实际显示位置（考虑居中）
-        const offsetX = (containerWidth - scaledWidth) / 2;
-        const offsetY = (containerHeight - scaledHeight) / 2;
-        
+        // 不再缩放背景图，使用原始像素坐标
         // 检测是否点击到猫咪
         catsData.forEach(cat => {
-            // 计算猫咪在背景图上的实际位置
-            const catX = offsetX + (cat.x * scaledWidth);
-            const catY = offsetY + (cat.y * scaledHeight);
+            // 计算猫咪在背景图上的绝对位置
+            const catX = Math.round(cat.x * backgroundNaturalWidth);
+            const catY = Math.round(cat.y * backgroundNaturalHeight);
             
             // 计算点击位置与猫咪位置的距离
             const distance = Math.sqrt(
@@ -422,9 +410,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 Math.pow(clickY - catY, 2)
             );
             
-            // 增加检测范围到40像素，提高点击精度
-            // 根据缩放比例调整检测范围
-            const detectionRadius = 40 * scaleRatio;
+            // 使用固定的检测范围40像素，不再根据缩放比例调整
+            const detectionRadius = 40;
             if (distance <= detectionRadius) {
                 findCat(cat, e.clientX, e.clientY);
             }
@@ -505,24 +492,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function enableDragMode() {
         const cats = document.querySelectorAll('.cat');
         
-        // 记录进入调试模式前的猫咪数据，用于后续恢复
-        window.catPositionsBeforeDebug = {};
+        // 不再需要记录进入调试模式前的猫咪数据，因为我们不再恢复原始位置
         
-        // 首先保存所有猫咪的当前位置数据
+        // 记录所有猫咪的当前位置数据，仅用于调试显示
         cats.forEach(catElement => {
             const catId = parseInt(catElement.dataset.id);
             const cat = catsData.find(c => c.id === catId);
             if (cat) {
-                // 保存猫咪的原始坐标数据（相对坐标）
-                window.catPositionsBeforeDebug[catId] = {
-                    x: cat.x,
-                    y: cat.y,
-                    left: catElement.style.left,
-                    top: catElement.style.top,
-                    transform: catElement.style.transform
-                };
+                // 获取背景图的原始尺寸
+                const background = document.getElementById('background');
+                const backgroundNaturalWidth = background.naturalWidth;
+                const backgroundNaturalHeight = background.naturalHeight;
                 
-                console.log(`调试模式 - 保存猫咪 ${cat.id}(${cat.name}) 的原始位置: (${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`);
+                // 计算绝对像素坐标用于显示
+                const absoluteX = Math.round(cat.x * backgroundNaturalWidth);
+                const absoluteY = Math.round(cat.y * backgroundNaturalHeight);
+                console.log(`调试模式 - 猫咪 ${cat.id}(${cat.name}) 的当前位置: 绝对坐标(${absoluteX}px, ${absoluteY}px), 相对坐标(${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`);
             }
             
             // 添加拖动事件监听器
@@ -576,29 +561,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 catElement.classList.add('found');
             }
             
-            // 从保存的数据中恢复猫咪位置
-            if (window.catPositionsBeforeDebug && window.catPositionsBeforeDebug[catId]) {
-                const savedPosition = window.catPositionsBeforeDebug[catId];
+            // 不再恢复猫咪位置，保持当前位置不变
+            // 只记录当前位置用于调试
+            if (cat) {
+                // 获取背景图的原始尺寸
+                const background = document.getElementById('background');
+                const backgroundNaturalWidth = background.naturalWidth;
+                const backgroundNaturalHeight = background.naturalHeight;
                 
-                // 恢复猫咪的相对坐标
-                if (cat) {
-                    cat.x = savedPosition.x;
-                    cat.y = savedPosition.y;
-                    console.log(`关闭调试模式 - 恢复猫咪 ${cat.id}(${cat.name}) 的原始位置: (${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`);
-                }
-                
-                // 恢复猫咪的样式属性
-                catElement.style.left = savedPosition.left;
-                catElement.style.top = savedPosition.top;
-                catElement.style.transform = savedPosition.transform;
-                
-                // 强制应用样式
-                void catElement.offsetWidth;
+                // 计算绝对像素坐标用于显示
+                const absoluteX = Math.round(cat.x * backgroundNaturalWidth);
+                const absoluteY = Math.round(cat.y * backgroundNaturalHeight);
+                console.log(`关闭调试模式 - 保持猫咪 ${cat.id}(${cat.name}) 的当前位置: 绝对坐标(${absoluteX}px, ${absoluteY}px), 相对坐标(${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`);
             }
         });
         
         // 输出日志，帮助调试
-        console.log('已关闭调试模式，恢复猫咪原始位置');
+        console.log('已关闭调试模式，保持猫咪当前位置不变');
     }
     
     // 开始拖动
@@ -613,11 +592,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const clientX = e.clientX || e.touches[0].clientX;
         const clientY = e.clientY || e.touches[0].clientY;
         
+        // 获取背景图的原始尺寸
+        const backgroundNaturalWidth = background.naturalWidth;
+        const backgroundNaturalHeight = background.naturalHeight;
+        
         // 记录拖动开始前的位置，用于调试日志
         const catId = parseInt(draggedCat.dataset.id);
         const cat = catsData.find(c => c.id === catId);
         if (cat) {
-            console.log(`开始拖动猫咪 ${cat.id}(${cat.name}) - 起始位置: (${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`);
+            // 计算绝对像素坐标
+            const absoluteX = Math.round(cat.x * backgroundNaturalWidth);
+            const absoluteY = Math.round(cat.y * backgroundNaturalHeight);
+            console.log(`开始拖动猫咪 ${cat.id}(${cat.name}) - 起始位置: 绝对坐标(${absoluteX}px, ${absoluteY}px), 相对坐标(${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`);
         }
         
         // 立即将猫咪中心点移动到鼠标位置
@@ -630,8 +616,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // 立即更新猫咪位置到鼠标位置
         if (backgroundRect) {
             // 计算背景图的实际缩放比例
-            const backgroundNaturalWidth = background.naturalWidth;
-            const backgroundNaturalHeight = background.naturalHeight;
             const containerWidth = backgroundRect.width;
             const containerHeight = backgroundRect.height;
             
@@ -693,7 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 获取背景图的位置和尺寸
         backgroundRect = background.getBoundingClientRect();
         
-        // 计算背景图的实际缩放比例
+        // 获取背景图的原始尺寸（这将作为我们的绝对坐标系）
         const backgroundNaturalWidth = background.naturalWidth;
         const backgroundNaturalHeight = background.naturalHeight;
         const containerWidth = backgroundRect.width;
@@ -717,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const offsetX = (containerWidth - scaledWidth) / 2;
         const offsetY = (containerHeight - scaledHeight) / 2;
         
-        // 计算鼠标在背景图上的相对位置
+        // 计算鼠标在背景图上的相对位置（相对于背景图原始分辨率的坐标比例）
         let relativeX = (clientX - backgroundRect.left - offsetX) / scaledWidth;
         let relativeY = (clientY - backgroundRect.top - offsetY) / scaledHeight;
         
@@ -729,9 +713,14 @@ document.addEventListener('DOMContentLoaded', () => {
             relativeY = Math.max(0.02, Math.min(relativeY, 0.98));
         }
         
-        // 设置猫咪元素的新位置，直接使用鼠标位置
-        draggedCat.style.left = `${clientX}px`;
-        draggedCat.style.top = `${clientY}px`;
+        // 计算猫咪在屏幕上的实际位置
+        const catScreenX = offsetX + (relativeX * scaledWidth);
+        const catScreenY = offsetY + (relativeY * scaledHeight);
+        
+        // 设置猫咪元素的新位置，使用计算出的位置而不是直接使用鼠标位置
+        // 这样可以避免拖拽时猫咪位置的跳跃
+        draggedCat.style.left = `${catScreenX}px`;
+        draggedCat.style.top = `${catScreenY}px`;
         
         // 更新猫咪数据中的位置（相对比例）
         const catId = parseInt(draggedCat.dataset.id);
@@ -741,6 +730,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // 保存相对于背景图的位置比例
             catsData[catIndex].x = relativeX;
             catsData[catIndex].y = relativeY;
+            
+            // 计算绝对像素坐标
+            const absoluteX = Math.round(catsData[catIndex].x * backgroundNaturalWidth);
+            const absoluteY = Math.round(catsData[catIndex].y * backgroundNaturalHeight);
+            
+            // 输出当前位置，帮助调试（显示绝对像素坐标）
+            console.log(`拖动猫咪 ${catsData[catIndex].id}(${catsData[catIndex].name}) - 当前位置: 绝对坐标(${absoluteX}px, ${absoluteY}px), 相对坐标(${catsData[catIndex].x.toFixed(4)}, ${catsData[catIndex].y.toFixed(4)})`);
             
             // 更新坐标显示
             updateCoordinatesDisplay();
@@ -777,13 +773,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 更新坐标显示
     function updateCoordinatesDisplay() {
-        let html = '<h3>猫咪坐标：</h3>';
+        if (!isDebugMode) return;
         
+        // 清空坐标显示
+        coordinatesDisplay.innerHTML = '';
+        
+        // 获取背景图的位置和尺寸
+        backgroundRect = background.getBoundingClientRect();
+        
+        // 获取背景图的原始尺寸
+        const backgroundNaturalWidth = background.naturalWidth;
+        const backgroundNaturalHeight = background.naturalHeight;
+        
+        // 显示所有猫咪的坐标（使用绝对像素坐标）
         catsData.forEach(cat => {
-            html += `<div>cat${cat.id} - ${cat.name}: x=${cat.x.toFixed(3)}, y=${cat.y.toFixed(3)}</div>`;
+            // 计算绝对像素坐标
+            const absoluteX = Math.round(cat.x * backgroundNaturalWidth);
+            const absoluteY = Math.round(cat.y * backgroundNaturalHeight);
+            
+            const catElement = document.createElement('div');
+            catElement.className = 'cat-coordinate';
+            catElement.textContent = `猫咪 ${cat.id}(${cat.name}): x = ${absoluteX}px, y = ${absoluteY}px (相对: ${cat.x.toFixed(4)}, ${cat.y.toFixed(4)})`;
+            coordinatesDisplay.appendChild(catElement);
         });
-        
-        coordinatesDisplay.innerHTML = html;
     }
     
     // 窗口大小改变时更新猫咪位置
