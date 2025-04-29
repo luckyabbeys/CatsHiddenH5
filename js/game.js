@@ -36,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 音效
     const meowSound = new Audio('./sounds/meow.mp3');
+    const backgroundMusic = new Audio('./sounds/catmusic.MP3');
+    backgroundMusic.loop = true; // 设置背景音乐循环播放
     
     // 初始化烟花效果
     const fireworks = new FireworksDisplay('fireworks-container');
@@ -311,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 显示猫咪名字
     function showCatName(cat, x, y) {
         catNameElement.textContent = cat.name;
+        // 直接使用鼠标点击的位置显示猫咪名字
         catNameElement.style.left = `${x}px`;
         catNameElement.style.top = `${y - 30}px`;
         catNameElement.classList.add('show');
@@ -368,6 +371,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function gameWin() {
         // 停止计时
         if (gameTimer) clearInterval(gameTimer);
+        
+        // 停止背景音乐
+        backgroundMusic.pause();
         
         // 计算游戏时间
         const gameTime = Math.floor((Date.now() - gameStartTime) / 1000);
@@ -443,6 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
     restartButton.addEventListener('click', () => {
         winMessage.classList.remove('show');
         fireworks.stop();
+        // 停止背景音乐
+        backgroundMusic.pause();
         // 回到初始状态而不是直接开始新游戏
         isGameActive = false;
         startGameButton.textContent = '开始游戏';
@@ -854,6 +862,9 @@ document.addEventListener('DOMContentLoaded', () => {
             startGameButton.textContent = '结束游戏';
             startGameButton.classList.add('stop');
             initGame();
+            // 播放背景音乐
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.play().catch(e => console.log('背景音乐播放失败:', e));
             // 确保开始游戏时添加猫咪点击事件
             setTimeout(() => {
                 addCatClickEvents();
@@ -872,6 +883,8 @@ document.addEventListener('DOMContentLoaded', () => {
             isGameActive = false;
             startGameButton.textContent = '开始游戏';
             startGameButton.classList.remove('stop');
+            // 停止背景音乐
+            backgroundMusic.pause();
             // 停止计时
             if (gameTimer) clearInterval(gameTimer);
             // 隐藏所有猫咪
