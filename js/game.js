@@ -313,9 +313,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 显示猫咪名字
     function showCatName(cat, x, y) {
         catNameElement.textContent = cat.name;
-        // 直接使用鼠标点击的位置显示猫咪名字
-        catNameElement.style.left = `${x}px`;
-        catNameElement.style.top = `${y - 30}px`;
+        // 考虑页面滚动偏移量，确保名字显示在正确位置
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // 使用鼠标点击的位置加上滚动偏移量显示猫咪名字
+        catNameElement.style.left = `${x + scrollX}px`;
+        catNameElement.style.top = `${y + scrollY - 30}px`;
         catNameElement.classList.add('show');
         
         // 3秒后隐藏名字
@@ -377,11 +381,32 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 计算游戏时间
         const gameTime = Math.floor((Date.now() - gameStartTime) / 1000);
+        const formattedTime = formatTime(gameTime);
         
         // 更新最佳时间
         if (!bestTime || gameTime < bestTime) {
             bestTime = gameTime;
             localStorage.setItem('bestTime', bestTime);
+        }
+        
+        // 更新胜利消息内容
+        const winContentElement = winMessage.querySelector('.win-content');
+        if (winContentElement) {
+            const timeInfoElement = winContentElement.querySelector('.time-info') || document.createElement('p');
+            timeInfoElement.className = 'time-info';
+            timeInfoElement.innerHTML = `完成时间: <span>${formattedTime}</span>`;
+            
+            const bestTimeElement = winContentElement.querySelector('.best-time') || document.createElement('p');
+            bestTimeElement.className = 'best-time';
+            bestTimeElement.innerHTML = `最佳时间: <span>${formatTime(bestTime)}</span>`;
+            
+            // 确保元素已添加到DOM
+            if (!winContentElement.contains(timeInfoElement)) {
+                winContentElement.insertBefore(timeInfoElement, winContentElement.querySelector('#restart-button'));
+            }
+            if (!winContentElement.contains(bestTimeElement)) {
+                winContentElement.insertBefore(bestTimeElement, winContentElement.querySelector('#restart-button'));
+            }
         }
         
         // 显示胜利消息
