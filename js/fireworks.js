@@ -3,12 +3,12 @@ class Firework {
     constructor(canvasWidth, canvasHeight) {
         this.x = Math.random() * canvasWidth;
         this.y = canvasHeight;
-        this.targetY = Math.random() * canvasHeight / 2;
+        this.targetY = Math.random() * canvasHeight * 0.8;
         this.size = 2;
         this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
         this.velocity = {
             x: Math.random() * 6 - 3,
-            y: -Math.random() * 3 - 3
+            y: - (Math.random() * 5 + 5) // 增大 y 方向速度
         };
         this.gravity = 0.1;
         this.opacity = 1;
@@ -55,7 +55,8 @@ class Particle {
         this.gravity = 0.1;
         this.opacity = 1;
         this.friction = 0.95;
-        this.life = 40 + Math.floor(Math.random() * 20);
+        // 增加粒子寿命
+        this.life = 80 + Math.floor(Math.random() * 40); 
     }
 
     update() {
@@ -64,7 +65,8 @@ class Particle {
         this.velocity.y *= this.friction;
         this.x += this.velocity.x;
         this.y += this.velocity.y;
-        this.opacity -= 0.02;
+        // 减少透明度衰减速度
+        this.opacity -= 0.005; 
         this.life--;
 
         return this.life > 0 && this.opacity > 0;
@@ -98,20 +100,21 @@ class FireworksDisplay {
     resizeCanvas() {
         this.canvas.width = this.container.clientWidth;
         this.canvas.height = this.container.clientHeight;
+        console.log(`Canvas width: ${this.canvas.width}, height: ${this.canvas.height}`);
     }
 
     start() {
         this.isRunning = true;
         this.animate();
-        // 增加烟花数量上限至25-50个（原来是5个），减少生成间隔至200ms（原来是800ms）
+        // 减少生成间隔至100ms
         this.createFireworksInterval = setInterval(() => {
-            if (this.fireworks.length < 30) {
+            if (this.fireworks.length < 100) {
                 // 一次性添加多个烟花，增加密度
-                for (let i = 0; i < 3; i++) {
+                for (let i = 0; i < 5; i++) { // 适当减少每次生成的烟花数量
                     this.fireworks.push(new Firework(this.canvas.width, this.canvas.height));
                 }
             }
-        }, 200);
+        }, 200); // 适当增大生成间隔
     }
 
     stop() {
@@ -145,6 +148,15 @@ class FireworksDisplay {
 
         // 更新和绘制粒子
         this.particles = this.particles.filter(particle => {
+            // 添加粒子尾迹效果
+            this.ctx.beginPath();
+            this.ctx.moveTo(particle.x - particle.velocity.x, particle.y - particle.velocity.y);
+            this.ctx.lineTo(particle.x, particle.y);
+            this.ctx.strokeStyle = particle.color;
+            this.ctx.globalAlpha = particle.opacity * 0.5;
+            this.ctx.stroke();
+            this.ctx.globalAlpha = 1;
+
             particle.draw(this.ctx);
             return particle.update();
         });
