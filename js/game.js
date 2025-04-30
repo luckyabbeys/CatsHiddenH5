@@ -44,9 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 初始化游戏
     function initGame() {
-        // 更新总猫咪数量显示
-        totalCountElement.textContent = catsData.length;
-        
         // 重置猫咪状态
         catsData.forEach(cat => {
             cat.found = false;
@@ -55,11 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // 清空猫咪容器
         catsContainer.innerHTML = '';
         
-        // 创建猫咪元素
+        // 创建猫咪元素（这将填充validCats数组）
         createCats();
         
-        // 更新计数器
-        updateCounter();
+        // 更新计数器（将在createCats完成后通过updateCounter更新总数显示）
+        // 注意：由于图片加载是异步的，总数会在所有有效图片加载后更新
         
         // 隐藏胜利消息
         winMessage.classList.remove('show');
@@ -127,38 +124,66 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 创建猫咪元素
     function createCats() {
+        // 创建有效猫咪数组（同时满足数据配置和图片存在的猫咪）
+        window.validCats = [];
+        
         // 跟踪需要加载的图片数量
         let imagesLoaded = 0;
-        const totalImages = catsData.length;
+        let imagesAttempted = 0;
         
         catsData.forEach(cat => {
-            const catElement = document.createElement('img');
-            catElement.className = 'cat';
-            catElement.dataset.id = cat.id;
-            catElement.alt = cat.name;
+            // 创建一个临时图片对象来检查图片是否存在
+            const testImg = new Image();
             
-            // 如果猫咪已经被找到，添加found类
-            if (cat.found) {
-                catElement.classList.add('found');
-            }
-            
-            // 监听图片加载完成事件
-            catElement.onload = function() {
-                imagesLoaded++;
+            // 图片加载成功处理
+            testImg.onload = function() {
+                // 图片存在，将此猫添加到有效猫咪数组
+                validCats.push(cat);
                 
-                // 当所有图片都加载完成后，更新所有猫咪位置
-                if (imagesLoaded === totalImages) {
-                    updateAllCatsPositions();
-                    // 为所有猫咪添加点击事件
-                    addCatClickEvents();
+                // 创建猫咪元素
+                const catElement = document.createElement('img');
+                catElement.className = 'cat';
+                catElement.dataset.id = cat.id;
+                catElement.alt = cat.name;
+                
+                // 如果猫咪已经被找到，添加found类
+                if (cat.found) {
+                    catElement.classList.add('found');
+                }
+                
+                // 监听图片加载完成事件
+                catElement.onload = function() {
+                    imagesLoaded++;
+                    
+                    // 当所有有效图片都加载完成后，更新所有猫咪位置
+                    if (imagesLoaded === validCats.length) {
+                        updateAllCatsPositions();
+                        // 为所有猫咪添加点击事件
+                        addCatClickEvents();
+                    }
+                };
+                
+                // 设置图片源（放在onload事件设置后，确保事件能被触发）
+                catElement.src = cat.image;
+                
+                // 添加到容器
+                catsContainer.appendChild(catElement);
+            };
+            
+            // 图片加载失败处理
+            testImg.onerror = function() {
+                console.log(`猫咪图片不存在: ${cat.image} (ID: ${cat.id})`);
+                imagesAttempted++;
+                
+                // 如果所有图片都已尝试加载，但没有有效猫咪，则更新UI
+                if (imagesAttempted === catsData.length && validCats.length === 0) {
+                    console.log('没有有效的猫咪图片');
+                    updateCounter(); // 更新计数器显示0/0
                 }
             };
             
-            // 设置图片源（放在onload事件设置后，确保事件能被触发）
-            catElement.src = cat.image;
-            
-            // 添加到容器
-            catsContainer.appendChild(catElement);
+            // 开始加载图片
+            testImg.src = cat.image;
         });
     }
     
@@ -271,23 +296,31 @@ document.addEventListener('DOMContentLoaded', () => {
             catElement.style.height = 'auto';
             
             const catId = parseInt(catElement.dataset.id);
-            const cat = catsData.find(c => c.id === catId);
+            // 使用validCats数组而不是catsData
+            const validCatsArray = window.validCats || [];
+            const cat = validCatsArray.find(c => c.id === catId);
             if (cat) {
                 updateCatPosition(catElement, cat);
             }
         });
         
-        // 输出当前缩放比例，帮助调试
-        console.log(`更新猫咪位置 - 背景图尺寸: ${backgroundNaturalWidth}x${backgroundNaturalHeight}, 游戏模式: ${isGameActive ? '游戏' : '非游戏'}, 调试模式: ${isDebugMode ? '是' : '否'}`);
+        // 输出当前缩放比例和有效猫咪数量，帮助调试
+        const validCatsArray = window.validCats || [];
+        console.log(`更新猫咪位置 - 背景图尺寸: ${backgroundNaturalWidth}x${backgroundNaturalHeight}, 游戏模式: ${isGameActive ? '游戏' : '非游戏'}, 调试模式: ${isDebugMode ? '是' : '否'}, 有效猫咪数量: ${validCatsArray.length}`);
     }
     
     // 更新计数器
     function updateCounter() {
-        const foundCount = catsData.filter(cat => cat.found).length;
+        // 使用validCats数组而不是catsData来计算已找到的猫咪数量
+        const validCatsArray = window.validCats || [];
+        const foundCount = validCatsArray.filter(cat => cat.found).length;
         foundCountElement.textContent = foundCount;
         
+        // 更新总猫咪数量显示（确保与有效猫咪数量一致）
+        totalCountElement.textContent = validCatsArray.length;
+        
         // 检查是否找到所有猫咪
-        if (foundCount === catsData.length) {
+        if (foundCount === validCatsArray.length && validCatsArray.length > 0) {
             gameWin();
         }
     }
@@ -330,10 +363,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 找到猫咪
     function findCat(cat, x, y) {
-        if (cat.found) return;
+        // 确保cat是有效猫咪数组中的一只
+        const validCatsArray = window.validCats || [];
+        const validCat = validCatsArray.find(c => c.id === cat.id);
+        
+        // 如果猫咪不在有效数组中或已经被找到，则返回
+        if (!validCat || cat.found) return;
         
         // 标记为已找到
         cat.found = true;
+        // 同时更新validCats数组中对应猫咪的状态
+        validCat.found = true;
         
         // 显示猫咪
         const catElement = document.querySelector(`.cat[data-id="${cat.id}"]`);
@@ -434,8 +474,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const backgroundNaturalHeight = background.naturalHeight;
         
         // 不再缩放背景图，使用原始像素坐标
-        // 检测是否点击到猫咪
-        catsData.forEach(cat => {
+        // 检测是否点击到猫咪，使用validCats数组而不是catsData
+        const validCatsArray = window.validCats || [];
+        validCatsArray.forEach(cat => {
             // 计算猫咪在背景图上的绝对位置
             const catX = Math.round(cat.x * backgroundNaturalWidth);
             const catY = Math.round(cat.y * backgroundNaturalHeight);
@@ -453,7 +494,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-
     
     // 为猫咪元素添加点击事件
     function addCatClickEvents() {
@@ -466,7 +506,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isDebugMode || !isGameActive) return;
                 
                 const catId = parseInt(catElement.dataset.id);
-                const cat = catsData.find(c => c.id === catId);
+                // 使用validCats数组而不是catsData，确保只处理有效的猫咪
+                const validCatsArray = window.validCats || [];
+                const cat = validCatsArray.find(c => c.id === catId);
                 
                 if (cat && !cat.found) {
                     findCat(cat, e.clientX, e.clientY);
@@ -535,7 +577,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // 记录所有猫咪的当前位置数据，仅用于调试显示
         cats.forEach(catElement => {
             const catId = parseInt(catElement.dataset.id);
-            const cat = catsData.find(c => c.id === catId);
+            // 使用validCats数组而不是catsData，确保只处理有效的猫咪
+            const validCatsArray = window.validCats || [];
+            const cat = validCatsArray.find(c => c.id === catId);
             if (cat) {
                 // 获取背景图的原始尺寸
                 const background = document.getElementById('background');

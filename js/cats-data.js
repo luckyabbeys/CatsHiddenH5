@@ -79,6 +79,46 @@ const catsData = [
         x: 0.2,
         y: 0.5,
         found: false
+    },
+    {
+      id: 11,
+      name: "花卷",
+      image: "./images/cat11.png",
+      x: 0.6,
+      y: 0.6,
+      found: false
+    },
+    {
+    id: 12,
+    name: "布丁",
+    image: "./images/cat12.png",
+    x: 0.3,
+    y: 0.7,
+    found: false
+    },
+    {
+      id: 13,
+      name: "糖糖",
+      image: "./images/cat13.png",
+      x: 0.7,
+      y: 0.7,
+      found: false
+    },
+    {
+      id: 14,
+      name: "酥酥",
+      image: "./images/cat14.png",
+      x: 0.8,
+      y: 0.8,
+      found: false
+    },
+    {
+      id: 15,
+      name: "米米",
+      image: "./images/cat15.png",
+      x: 0.3,
+      y: 0.9,
+      found: false
     }
 ];
 
@@ -106,6 +146,8 @@ function loadCatsPositions() {
             
             console.log(`加载猫咪位置 - 当前背景图尺寸: ${currentBackgroundWidth}x${currentBackgroundHeight}`);
             
+            // 注意：此时validCats数组可能还未创建，所以我们只能更新catsData
+            // 在游戏初始化时，createCats函数会检查图片是否存在，并创建有效猫咪数组
             positions.forEach((pos, index) => {
                 if (index < catsData.length) {
                     // 从绝对像素坐标转换为相对坐标
@@ -175,8 +217,11 @@ function saveCatsPositions() {
     console.log(`调试模式 - 保存猫咪位置`);
     console.log(`调试模式 - 背景图原始尺寸: ${backgroundNaturalWidth}x${backgroundNaturalHeight}`);
     
+    // 使用validCats数组而不是catsData，确保只保存有效的猫咪位置
+    const validCatsArray = window.validCats || [];
+    
     // 确保所有猫咪坐标在有效范围内并转换为绝对像素坐标
-    const positions = catsData.map(cat => {
+    const positions = validCatsArray.map(cat => {
         // 限制坐标在0.02到0.98之间，避免猫咪跑到边界外
         cat.x = Math.max(0.02, Math.min(cat.x, 0.98));
         cat.y = Math.max(0.02, Math.min(cat.y, 0.98));
@@ -204,8 +249,8 @@ function saveCatsPositions() {
     // 保存到localStorage
     localStorage.setItem('catsPositions', JSON.stringify(saveData));
     
-    // 显示保存成功的提示
-    alert(`已成功保存${catsData.length}只猫咪的位置！刷新页面后位置将保持不变。`);
+    // 显示保存成功的提示，使用validCats数组的长度
+    alert(`已成功保存${validCatsArray.length}只猫咪的位置！刷新页面后位置将保持不变。`);
 }
 
 // 初始化加载猫咪位置
