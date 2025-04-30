@@ -364,8 +364,40 @@ document.addEventListener('DOMContentLoaded', () => {
         showCatName(cat, x, y);
         
         // 播放音效
-        meowSound.currentTime = 0;
-        meowSound.play().catch(e => console.log('音频播放失败:', e));
+        try {
+            // 尝试播放对应ID的猫咪音效
+            const soundPath = `./sounds/100catsounds/${cat.id}.ogg`;
+            console.log(`尝试加载猫咪音效: ${soundPath}`);
+            
+            const catSound = new Audio(soundPath);
+            catSound.volume = 0.8; // 设置音量
+            
+            // 确保音频已加载
+            catSound.addEventListener('canplaythrough', () => {
+                console.log(`猫咪 ${cat.id} 的音效已加载完成，开始播放`);
+                catSound.play()
+                    .catch(e => {
+                        console.error(`自定义音效播放失败: ${e.message}，回退到默认音效`);
+                        // 如果自定义音效播放失败，回退到默认音效
+                        meowSound.currentTime = 0;
+                        meowSound.play().catch(err => console.error('默认音效播放失败:', err));
+                    });
+            }, { once: true });
+            
+            // 设置加载错误处理
+            catSound.addEventListener('error', (e) => {
+                console.error(`猫咪音效加载失败: ${e.target.error.message || '未知错误'}`);
+                console.log(`尝试使用默认音效`);
+                meowSound.currentTime = 0;
+                meowSound.play().catch(err => console.error('默认音效播放失败:', err));
+            }, { once: true });
+            
+        } catch (error) {
+            console.error(`加载自定义音效出错: ${error.message}，使用默认音效`);
+            // 出错时使用默认音效
+            meowSound.currentTime = 0;
+            meowSound.play().catch(e => console.error('默认音效播放失败:', e));
+        }
         
         // 更新计数器
         updateCounter();
